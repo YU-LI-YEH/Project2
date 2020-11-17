@@ -1,15 +1,17 @@
 #include <iostream>
 #include <fstream>
+#include <string>
 #include <time.h>
 
 using namespace std;
-template <class T> class stack;
+template <class T> class stackk;
 template <class T> class queue;
 class FCR;
+string file;
 
 template <class T>
 class link {
-    friend class stack <T>;
+    friend class stackk <T>;
     friend class queue <T>;
     friend class FCR;
     public:
@@ -31,11 +33,11 @@ class adjnode {
 };
 
 template <class T>
-class stack{
+class stackk{
     friend class FCR;
     public:
-        stack() : topp(nullptr), my_size(0){}
-        ~stack(){}
+        stackk() : topp(nullptr), my_size(0){}
+        ~stackk(){}
         void push(T& n){
             link <T> *tmp = new link <T>(n);
             if (empty()){
@@ -141,7 +143,7 @@ class FCR{
         ~FCR(){}
         void read(){
             ifstream rdfile;
-            rdfile.open("floor.data", ios::in);
+            rdfile.open(file, ios::in);
             if (!rdfile){
                 cout << "error";
             }
@@ -163,7 +165,7 @@ class FCR{
                         R.r = i;
                         R.c = j;
                     }
-                    *(matrix + i * n + j) = temp;
+                    *(matrix + i * n + j) = tmp;
                 }
             }
             rdfile.close();
@@ -244,3 +246,136 @@ class FCR{
                 delete[] visited[i];
             delete []visited;
         }
+        void DFS(adjnode dest){   
+            int batt = B;
+            stackk <adjnode> s_haspass;  
+            stackk <adjnode> go_to;   
+            adjnode tmp(dest.r, dest.c);
+            visited[tmp.r][tmp.c] = true;
+            while(!(tmp.r == R.r && tmp.c == R.c)){
+                go_to.push(tmp);
+                tmp = matrix[n * tmp.r + tmp.c]->parent;
+            }
+            batt -= go_to.my_size;
+            for(; ! go_to.empty(); go_to.pop()){ 
+                s_haspass.push(tmp);
+                tmp = go_to.top();
+                for(link <adjnode> *a = matrix[n * tmp.r + tmp.c]->adjlist.first; a != nullptr; a = a->next){
+                    if(visited[a->value.r][a->value.c] == false)
+                        NotVisit.push(a->value);     
+                }
+                visited[tmp.r][tmp.c] = true;
+                ans_list.push(tmp);
+            }
+            int d = matrix[n * tmp.r + tmp.c]->distance_to_R;
+
+            while(batt > d){
+                int path = 0;
+                for(link <adjnode> *a = matrix[n * tmp.r + tmp.c]->adjlist.first; a != nullptr; a = a->next){
+                    if(visited[a->value.r][a->value.c] == false){
+                        NotVisit.push(a->value);
+                        path++;
+                    }
+                }              
+                if(path != 0){
+                    s_haspass.push(tmp);
+                    tmp = NotVisit.top();
+                    visited[tmp.r][tmp.c] = true;
+                    batt--;
+                    if(matrix[n * NotVisit.top().r + NotVisit.top().c]->distance_to_R <= batt){
+                        ans_list.push(tmp);
+                        NotVisit.pop();
+                    }
+                    else{
+                        visited[tmp.r][tmp.c] = false;
+                        tmp = s_haspass.top();
+                        batt++;
+                        break;
+                    } 
+                }
+                else if(path == 0){
+                    if(!s_haspass.empty()){  
+                        batt--;
+                        if(matrix[n * s_haspass.top().r + s_haspass.top().c]->distance_to_R <= batt){
+                            tmp = s_haspass.top();
+                            ans_list.push(tmp);
+                            s_haspass.pop();
+                        }
+                        else break;
+                    }
+                    else break;
+                }
+
+                d = matrix[n * tmp.r + tmp.c]->distance_to_R;
+
+                if(batt == d){
+                    for(link <adjnode> *a = matrix[n * tmp.r + tmp.c]->adjlist.first; a != nullptr; a = a->next){
+                        if(visited[a->value.r][a->value.c] == false){
+                            NotVisit.push(a->value);
+                            path++;
+                        }
+                    }
+                    break;
+                }          
+            }
+            while(!(tmp.r == R.r && tmp.c == R.c)){
+                tmp = matrix[n * tmp.r + tmp.c]->parent;
+                for(link <adjnode> *a = matrix[n * tmp.r + tmp.c]->adjlist.first; a != nullptr; a = a->next){
+                    if(visited[a->value.r][a->value.c] == false)
+                    NotVisit.push(a->value);     
+                }
+                visited[tmp.r][tmp.c] = true;
+                ans_list.push(tmp);
+            }
+            s_haspass.clean();
+        }
+        void traverse(){
+            fstream d_file;
+            visited = new bool *[m];    
+            for(int i = 0; i < m; i++)
+                visited[i] = new bool[n];
+            for(int i = 0;i < m; i++)
+                for(int j = 0; j < n; j++)
+                    visited[i][j] = false;
+            NotVisit.push(R);
+            while(! NotVisit.empty()){
+                adjnode node = NotVisit.top();
+                NotVisit.pop();
+                if(visited[node.r][node.c] == false){
+                    DFS(node);
+                }           
+            }
+            for(int i = 0;i < m; i++)
+                delete[] visited[i];
+            delete []visited;
+        }
+        void write(){
+            fstream opfile;
+            opfile.open("final.path", ios::out);
+            if(! opfile)
+                cout << "error";
+            cout << ans_list.size() << endl;
+            opfile << ans_list.size() << endl;
+            opfile << R.r << " " << R.c<< endl;
+            for(; !ans_list.empty(); ans_list.pop()){
+                opfile << ans_list.front().r << " " << ans_list.front().c << endl;
+            } 
+            opfile.close(); 
+        }
+    private:
+        adjnode R;
+        int m,n,B;
+        ElementNode** matrix;
+        bool** visited;
+        queue<adjnode> ans_list;
+        stackk<adjnode> NotVisit;
+};
+int main(int argc, char *argv[]){
+    file = argv[1];
+    FCR fcr;
+    fcr.read();
+    fcr.BFS_FindDisranceToR();
+    fcr.traverse();
+    fcr.write();
+    cout << (double)clock() / CLOCKS_PER_SEC << "S" << endl;
+}
